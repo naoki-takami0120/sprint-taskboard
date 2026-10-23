@@ -58,3 +58,21 @@
 
 **Learned**
 - A factory state overrides only some attributes, so I can build data in different situations with a short, readable call.
+
+## Day 4 - 2026-10-22: Project CRUD API
+
+**What I did**
+- Wrote `ProjectController` with index, store, show, update, and destroy.
+- Wrote 14 feature tests for the project endpoints.
+
+**Why**
+- `owner_id` is set from the logged-in user, not from the request. Tests check that a value sent by the client is ignored.
+- Creating a project and adding the owner as a member run in one database transaction, so I never get a project without a member.
+- Validation runs after the permission check, so users without permission do not see validation messages.
+
+**Problems and fixes**
+- The routes were outside the `auth:sanctum` group, so `$request->user()` was null and the request failed. Moving the routes into the group fixed it.
+- Several typos (`users()` instead of `user()`, a missing `$id`) appeared as errors and were fixed by reading the messages.
+
+**Learned**
+- Starting a query from the user's relationship is a simple way to scope data to the current user.
