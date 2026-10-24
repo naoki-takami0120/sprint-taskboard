@@ -180,4 +180,39 @@ class ProjectTest extends TestCase
         $this->deleteJson("/api/projects/{$project->id}")->assertNotFound();
         $this->assertDatabaseHas('projects', ['id' => $project->id]);
     }
+
+    public function test_projects_are_paginated_by_default(): void
+    {
+        $user = User::factory()->create();
+        Project::factory(21)->create(['owner_id' => $user->id])
+            ->each(fn ($project) => $project->members()->attach($user->id));
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/projects')
+            ->assertOk()
+            ->assertJsonCount(15, 'data')
+            ->assertJsonPath('meta.total', 21);
+    }
+
+    public function test_second_page_returns_the_remaining_projects(): void
+    {
+        $user = User::factory()->create();
+        Project::factory(21)->create(['owner_id' => $user->id])
+            ->each(fn ($project) => $project->members()->attach($user->id));
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/projects?page=2')
+            ->assertOk()
+            ->assertJsonCount(6, 'data')
+            ->assertJsonPath('meta.current_page', 2);
+    }
+
+    public function test_per_page_over_the_limit_is_rejected(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/projects?per_page=101')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page']);
+    }
 }

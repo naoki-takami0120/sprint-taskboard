@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexProjectRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
@@ -17,9 +18,12 @@ class ProjectController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexProjectRequest $request): AnonymousResourceCollection
     {
-        $projects = $request->user()->projects()->latest()->get();
+        $projects = $request->user()->projects()
+            ->latest('projects.created_at')
+            ->orderByDesc('projects.id')
+            ->paginate($request->validated('per_page', 15));
 
         return ProjectResource::collection($projects);
     }
