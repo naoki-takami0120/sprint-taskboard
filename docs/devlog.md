@@ -76,3 +76,20 @@
 
 **Learned**
 - Starting a query from the user's relationship is a simple way to scope data to the current user.
+
+## Day 5 - 2026-10-23: Task CRUD API
+
+**What I did**
+- Wrote `TaskController` with index, store, show, update and destroy.
+- Used shallow nested routes: list and create are under `/api/projects/{project}/tasks` while show, update, and destroy use `/api/tasks/{task}`.
+- Wrote 19 feature tests for the task endpoints.
+
+**Why**
+- `status` is not accepted by the create and updated endpoints. Status changes will go through a dedicated endpoint that uses a transaction, writes a history log, and updates the ranking. Tests make sure the regular endpoints ignore `status`.
+- On update, `title` uses `sometimes` and `required`: it can be left out, but it cannnot be sent empty.
+
+**Problems and fixes**
+- Several tests failed with 401 because I forgot `Sanctum::actingAs`. The failure message ("received 401") pointed to authentication, not validation.
+
+**Learned**
+- A test should check both what changes and what must not change.
