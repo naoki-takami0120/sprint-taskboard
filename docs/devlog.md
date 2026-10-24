@@ -93,3 +93,22 @@
 
 **Learned**
 - A test should check both what changes and what must not change.
+
+## Day 6 - 2026-10-24: Form requests, API resources, pagination, and filters
+
+**What I did**
+- Moved validation from the controllers to form requests (store and update for projects and tasks, plus index requests for the list endpoints).
+- Added API resources for projects and tasks, so the response shape is defined in one place.
+- Added pagination and filters (`status`, `assignee_id`, `sprint_id`, `per_page`) to the task list, and pagination to the project list.
+- Added tests for pagination, filters, and the order of the 404 and 422 checks.
+
+**Why**
+- Form requests run before the controllers, so the permission check lives in `authorize()`. A non-member gets 404 before any validation runs, so the API does not reveal what the validation rules are.
+- API resources list the returned fields explicitly. A column added later is not exposed by accident.
+- The list orders by `created_at` and then by `id`. Seeded rows share the same `created_at`, and an unstable order can duplicate or skip rows across pages.
+- `per_page` is capped at 100 so a client cannot ask for the whole table in one request.
+
+
+**Learned**
+- Starting a query from a many-to-many relationship joins the pivot table, so column names need a table prefix.
+
