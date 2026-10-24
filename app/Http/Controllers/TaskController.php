@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class TaskController extends Controller
@@ -14,12 +16,12 @@ class TaskController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, string $projectId): JsonResponse
+    public function index(Request $request, string $projectId): AnonymousResourceCollection
     {
         $project = $request->user()->projects()->findOrFail($projectId);
         $tasks = $project->tasks()->latest()->get();
 
-        return response()->json($tasks);
+        return TaskResource::collection($tasks);
     }
 
     /**
@@ -29,28 +31,28 @@ class TaskController extends Controller
     {
         $task = $request->project()->tasks()->create($request->validated());
 
-        return response()->json($task->refresh(), 201);
+        return (new TaskResource($task->refresh()))->response()->setStatusCode(201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function show(Request $request, string $id): TaskResource
     {
         $task = $this->findTask($request, $id);
 
-        return response()->json($task);
+        return new TaskResource($task);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateTaskRequest $request): JsonResponse
+    public function update(UpdateTaskRequest $request): TaskResource
     {
         $task = $request->task();
         $task->update($request->validated());
 
-        return response()->json($task);
+        return new TaskResource($task);
     }
 
     /**

@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
+use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -15,11 +17,11 @@ class ProjectController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $projects = $request->user()->projects()->latest()->get();
 
-        return response()->json($projects);
+        return ProjectResource::collection($projects);
     }
 
     /**
@@ -37,28 +39,28 @@ class ProjectController extends Controller
             return $project;
         });
 
-        return response()->json($project, 201);
+        return (new ProjectResource($project))->response()->setStatusCode(201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function show(Request $request, string $id): ProjectResource
     {
         $project = $request->user()->projects()->findOrFail($id);
 
-        return response()->json($project);
+        return new ProjectResource($project);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProjectRequest $request): JsonResponse
+    public function update(UpdateProjectRequest $request): ProjectResource
     {
         $project = $request->project();
         $project->update($request->validated());
 
-        return response()->json($project);
+        return new ProjectResource($project);
     }
 
     /**

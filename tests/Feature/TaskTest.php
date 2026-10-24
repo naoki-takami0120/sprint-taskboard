@@ -39,7 +39,7 @@ class TaskTest extends TestCase
 
         $this->getJson("/api/projects/{$project->id}/tasks")
             ->assertOk()
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_list_contains_only_tasks_of_the_project(): void
@@ -55,7 +55,7 @@ class TaskTest extends TestCase
 
         $this->getJson("/api/projects/{$project->id}/tasks")
             ->assertOk()
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_non_member_cannot_list_tasks(): void
@@ -77,7 +77,7 @@ class TaskTest extends TestCase
         Sanctum::actingAs($member);
         $this->postJson("/api/projects/{$project->id}/tasks", ['title' => 'New task'])
             ->assertCreated()
-            ->assertJsonPath('status', 'todo');
+            ->assertJsonPath('data.status', 'todo');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $project->id,
@@ -107,7 +107,7 @@ class TaskTest extends TestCase
         Sanctum::actingAs($user);
         $this->postJson("/api/projects/{$project->id}/tasks", ['title' => 'New task', 'status' => 'done'])
             ->assertCreated()
-            ->assertJsonPath('status', 'todo');
+            ->assertJsonPath('data.status', 'todo');
 
         $this->assertDatabaseHas('tasks', ['title' => 'New task', 'status' => 'todo']);
     }
@@ -173,8 +173,8 @@ class TaskTest extends TestCase
 
         $this->getJson("/api/tasks/{$task->id}")
             ->assertOk()
-            ->assertJsonPath('id', $task->id)
-            ->assertJsonPath('title', $task->title);
+            ->assertJsonPath('data.id', $task->id)
+            ->assertJsonPath('data.title', $task->title);
     }
 
     public function test_non_member_cannot_view_task(): void
@@ -199,7 +199,7 @@ class TaskTest extends TestCase
 
         $this->putJson("/api/tasks/{$task->id}", ['title' => 'Updated'])
             ->assertOk()
-            ->assertJsonPath('title', 'Updated');
+            ->assertJsonPath('data.title', 'Updated');
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'title' => 'Updated']);
     }

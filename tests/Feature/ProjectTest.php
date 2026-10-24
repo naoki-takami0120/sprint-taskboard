@@ -35,8 +35,8 @@ class ProjectTest extends TestCase
 
         $this->getJson('/api/projects')
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.id', $mine->id);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $mine->id);
     }
 
     public function test_user_can_create_project(): void
@@ -49,7 +49,7 @@ class ProjectTest extends TestCase
             'description' => 'About the project',
         ])
             ->assertCreated()
-            ->assertJsonPath('title', 'New Project');
+            ->assertJsonPath('data.title', 'New Project');
 
         $this->assertDatabaseHas('projects', [
             'title' => 'New Project',
@@ -64,7 +64,7 @@ class ProjectTest extends TestCase
 
         $response = $this->postJson('/api/projects', ['title' => 'New Project']);
         $this->assertDatabaseHas('project_user', [
-            'project_id' => $response->json('id'),
+            'project_id' => $response->json('data.id'),
             'user_id' => $user->id,
         ]);
     }
@@ -105,7 +105,7 @@ class ProjectTest extends TestCase
         Sanctum::actingAs($member);
         $this->getJson("/api/projects/{$project->id}")
             ->assertOk()
-            ->assertJsonPath('id', $project->id);
+            ->assertJsonPath('data.id', $project->id);
     }
 
     public function test_non_member_cannot_view_project(): void
