@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,15 +25,11 @@ class ProjectController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreProjectRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
-        $project = DB::transaction(function () use ($request, $validated) {
+        $project = DB::transaction(function () use ($request) {
             $project = Project::create([
-                ...$validated,
+                ...$request->validated(),
                 'owner_id' => $request->user()->id,
             ]);
             $project->members()->attach($request->user()->id);
@@ -55,18 +53,10 @@ class ProjectController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateProjectRequest $request): JsonResponse
     {
-        $project = $request->user()->projects()->findOrFail($id);
-        if ($project->owner_id !== $request->user()->id) {
-            abort(403);
-        }
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
-
-        $project->update($validated);
+        $project = $request->project();
+        $project->update($request->validated());
 
         return response()->json($project);
     }

@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
@@ -24,19 +25,9 @@ class TaskController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, string $projectId): JsonResponse
+    public function store(StoreTaskRequest $request): JsonResponse
     {
-        $project = $request->user()->projects()->findOrFail($projectId);
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sprint_id' => ['nullable', Rule::exists('sprints', 'id')->where('project_id', $project->id)],
-            'assignee_id' => ['nullable', Rule::exists('project_user', 'user_id')->where('project_id', $project->id)],
-            'due_date' => ['nullable', 'date'],
-            'points' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
-        $task = $project->tasks()->create($validated);
+        $task = $request->project()->tasks()->create($request->validated());
 
         return response()->json($task->refresh(), 201);
     }
@@ -54,19 +45,10 @@ class TaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateTaskRequest $request): JsonResponse
     {
-        $task = $this->findTask($request, $id);
-
-        $validated = $request->validate([
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sprint_id' => ['nullable', Rule::exists('sprints', 'id')->where('project_id', $task->project_id)],
-            'assignee_id' => ['nullable', Rule::exists('project_user', 'user_id')->where('project_id', $task->project_id)],
-            'due_date' => ['nullable', 'date'],
-            'points' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
-        $task->update($validated);
+        $task = $request->task();
+        $task->update($request->validated());
 
         return response()->json($task);
     }
@@ -84,6 +66,6 @@ class TaskController extends Controller
 
     private function findTask(Request $request, string $id): Task
     {
-        return Task::whereIn('project_id', $request->user()->projects()->select('projects.id'))->findOrFail($id);
+        return Task::visibleTo($request->user())->findOrFail($id);
     }
 }
