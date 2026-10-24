@@ -293,4 +293,127 @@ class TaskTest extends TestCase
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id]);
     }
+
+    public function test_list_is_paginated_by_default(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        Task::factory(20)->create(['project_id' => $project->id]);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/projects/{$project->id}/tasks")
+            ->assertOk()
+            ->assertJsonCount(15, 'data')
+            ->assertJsonPath('meta.total', 20)
+            ->assertJsonPath('meta.per_page', 15);
+    }
+
+    public function test_second_page_returns_the_ramaining_tasks(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        Task::factory(20)->create(['project_id' => $project->id]);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/projects/{$project->id}/tasks?page=2")
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.current_page', 2);
+    }
+
+    public function test_per_page_changes_the_page_size(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        Task::factory(20)->create(['project_id' => $project->id]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/projects/{$project->id}/tasks?per_page=5")
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.per_page', 5)
+            ->assertJsonPath('meta.last_page', 4);
+    }
+
+    public function test_per_page_over_the_limit_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/projects/{$project->id}/tasks?per_page=101")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page']);
+    }
+
+    public function test_can_filter_tasks_by_status(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        Task::factory(2)->create(['project_id' => $project->id]);
+        Task::factory(3)->done()->create(['project_id' => $project->id]);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/projects/{$project->id}/tasks?status=done")
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonMissing(['status' => 'todo']);
+    }
+
+    public function test_invalid_status_filter_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/projects/{$project->id}/tasks?status=archived")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_can_filter_tasks_by_assignee(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $member = User::factory()->create();
+        $project->members()->attach($member->id);
+
+        Task::factory(3)->create(['project_id' => $project->id, 'assignee_id' => $user->id]);
+        Task::factory(2)->create(['project_id' => $project->id, 'assignee_id' => $member->id]);
+        Task::factory(1)->create(['project_id' => $project->id]);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/projects/{$project->id}/tasks?assignee_id={$user->id}")
+            ->assertOk()
+            ->assertJsonCount(3, 'data');
+    }
+
+    public function test_filter_does_not_include_tasks_of_other_projects(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $otherProject = $this->projectFor(User::factory()->create());
+
+        Task::factory(1)->create(['project_id' => $project->id]);
+        Task::factory(2)->done()->create(['project_id' => $project->id]);
+        Task::factory(3)->done()->create(['project_id' => $otherProject->id]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/projects/{$project->id}/tasks?status=done")
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_non_member_gets_not_found_even_with_invalid_query(): void
+    {
+        $project = $this->projectFor(User::factory()->create());
+
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson("/api/projects/{$project->id}/tasks?status=archived")
+            ->assertNotFound();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
@@ -16,10 +17,15 @@ class TaskController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, string $projectId): AnonymousResourceCollection
+    public function index(IndexTaskRequest $request): AnonymousResourceCollection
     {
-        $project = $request->user()->projects()->findOrFail($projectId);
-        $tasks = $project->tasks()->latest()->get();
+        $tasks = $request->project()->tasks()
+            ->when($request->validated('status'), fn ($query, $status) => $query->where('status', $status))
+            ->when($request->validated('assignee_id'), fn ($query, $id) => $query->where('assignee_id', $id))
+            ->when($request->validated('sprint_id'), fn ($query, $id) => $query->where('sprint_id', $id))
+            ->latest()
+            ->orderByDesc('id')
+            ->paginate($request->validated('per_page', 15));
 
         return TaskResource::collection($tasks);
     }
