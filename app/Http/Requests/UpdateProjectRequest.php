@@ -10,7 +10,7 @@ class UpdateProjectRequest extends FormRequest
 {
     private ?Project $project = null;
 
-    public function project()
+    public function project(): Project
     {
         return $this->project ??= $this->user()->projects()->findOrFail($this->route('project'));
     }
@@ -20,7 +20,7 @@ class UpdateProjectRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->project()->owner_id === $this->user()->id;
+        return $this->user()->can('update', $this->project());
     }
 
     /**

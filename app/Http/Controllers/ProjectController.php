@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class ProjectController extends Controller
 {
@@ -74,9 +75,8 @@ class ProjectController extends Controller
     {
         $project = $request->user()->projects()->findOrFail($id);
 
-        if ($project->owner_id !== $request->user()->id) {
-            abort(403);
-        }
+        Gate::authorize('delete', $project);
+
         $project->delete();
 
         return response()->noContent();
