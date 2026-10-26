@@ -2,25 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Models\Project;
 use App\Models\Sprint;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesProjects;
 use Tests\TestCase;
 
 class TaskTest extends TestCase
 {
-    use RefreshDatabase;
-
-    private function projectFor(User $owner): Project
-    {
-        $project = Project::factory()->create(['owner_id' => $owner->id]);
-        $project->members()->attach($owner->id);
-
-        return $project;
-    }
+    use CreatesProjects, RefreshDatabase;
 
     public function test_guest_cannot_list_tasks(): void
     {

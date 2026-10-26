@@ -6,19 +6,12 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesProjects;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
 {
-    use RefreshDatabase;
-
-    private function projectFor(User $owner): Project
-    {
-        $project = Project::factory()->create(['owner_id' => $owner->id]);
-        $project->members()->attach($owner->id);
-
-        return $project;
-    }
+    use CreatesProjects, RefreshDatabase;
 
     public function test_guest_cannot_list_projects(): void
     {
@@ -214,5 +207,41 @@ class ProjectTest extends TestCase
         $this->getJson('/api/projects?per_page=101')
             ->assertStatus(422)
             ->assertJsonValidationErrors(['per_page']);
+    }
+
+    public function test_admin_member_can_update_a_project_they_do_not_own(): void
+    {
+        $project = $this->projectFor(User::factory()->create());
+        $admin = User::factory()->admin()->create();
+        $project->members()->attach($admin->id);
+
+        Sanctum::actingAs($admin);
+        $this->putJson("/api/projects/{$project->id}", ['title' => 'Updated by admin'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Updated by admin');
+
+        $this->assertDatabaseHas('projects', ['title' => 'Updated by admin']);
+    }
+
+    public function test_admin_member_can_delete_a_project_they_do_not_own(): void
+    {
+        $project = $this->projectFor(User::factory()->create());
+        $admin = User::factory()->admin()->create();
+        $project->members()->attach($admin->id);
+
+        Sanctum::actingAs($admin);
+        $this->deleteJson("/api/projects/{$project->id}")->assertNoContent();
+
+        $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+    }
+
+    public function test_admin_who_is_not_a_member_cannot_see_the_project(): void
+    {
+        $project = $this->projectFor(User::factory()->create());
+        $admin = User::factory()->admin()->create();
+
+        Sanctum::actingAs($admin);
+        $this->putJson("/api/projects/{$project->id}", ['title' => 'Hacked'])->assertNotFound();
+        $this->getJson("/api/projects/{$project->id}")->assertNotFound();
     }
 }
