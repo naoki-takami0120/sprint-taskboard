@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectMemberController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskStatusController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('register', [AuthController::class, 'register']);
@@ -19,4 +20,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/members', [ProjectMemberController::class, 'index']);
     Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
     Route::delete('/projects/{project}/members/{user}', [ProjectMemberController::class, 'destroy']);
+
+    Route::patch('/tasks/{task}/status', [TaskStatusController::class, 'update']);
 });

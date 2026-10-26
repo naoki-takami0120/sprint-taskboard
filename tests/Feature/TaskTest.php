@@ -300,7 +300,7 @@ class TaskTest extends TestCase
             ->assertJsonPath('meta.per_page', 15);
     }
 
-    public function test_second_page_returns_the_ramaining_tasks(): void
+    public function test_second_page_returns_the_remaining_tasks(): void
     {
         $user = User::factory()->create();
         $project = $this->projectFor($user);

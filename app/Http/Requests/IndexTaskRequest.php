@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\TaskStatus;
 use App\Models\Project;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -34,7 +35,7 @@ class IndexTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['sometimes', Rule::in(['todo', 'in_progress', 'done'])],
+            'status' => ['sometimes', Rule::enum(TaskStatus::class)],
             'assignee_id' => ['sometimes', 'integer'],
             'sprint_id' => ['sometimes', 'integer'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],

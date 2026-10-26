@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Task extends Model
     protected function casts(): array
     {
         return [
+            'status' => TaskStatus::class,
             'due_date' => 'date',
             'completed_at' => 'datetime',
         ];
