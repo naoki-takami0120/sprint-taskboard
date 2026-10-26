@@ -112,3 +112,19 @@
 **Learned**
 - Starting a query from a many-to-many relationship joins the pivot table, so column names need a table prefix.
 
+## Day 7 - 2026-10-25: Policies and member management
+
+**What I did**
+- Wrote `ProjectPolicy` with `update`, `delete`, and `manageMembers`, and replaced the owner checks in the controller and form request with it.
+- Added member endpoints: list, add by email, and remove.
+- Added tests for the policy, including admins, and 11 tests for the member endpoints.
+- Moved the shared `projectFor()` test helper into a trait (`tests/Concerns/CreatesProjects.php`).
+
+**Why**
+- Admins are handled in the policy's `before()` method. It returns `true` for admins and `null` for everyone else, so the normal checks still run. An admin who is not a member of a project still gets 404, because I did not want admins to read every project by default.
+- Removing the project owner returns 422, not 403. The caller has permission, but the request itself breaks a rule, because the owner must always be a member.
+- Removing a member unassigns their tasks inside one transaction, so a task never keeps an assignee who is no longer in the project. The tasks themselves are kept.
+- I did not write a task policy yet. The only rule for tasks is "members can do everything", and the query scope already enforces it.
+
+**Learned**
+- A 405 means the URL exists but the method is not allowed, so I should check the HTTP method first.
