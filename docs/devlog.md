@@ -128,3 +128,21 @@
 
 **Learned**
 - A 405 means the URL exists but the method is not allowed, so I should check the HTTP method first.
+
+## Day 8 - 2026-10-26: Task status endpoint with row locking
+
+**What I did**
+- Added a `TaskStatus` enum with the allowed transitions (`todo` to `in_progress`, `in_progress` to `todo` or `done`, `done` back to `in_progress`).
+- Added `PATCH /api/tasks/{task}/status`, which updates the status, sets or clears `completed_at`, and writes a row to `task_status_logs`, all inside one transaction.
+- Added tests for transitions, `completed_at`, history rows, validation, and access control.
+- Ran 10 concurrent requests against one task and checked that only one history row was written.
+
+**Why**
+- Create and update endpoints ignore `status`. Status changes go through one endpoint, so history, `completed_at`, and the ranking cannot be skipped.
+- The transaction rule and the "already in this state" check run inside the transaction, after locking the row with `lockForUpdate()`. A check made before the lock could use an outdated status when two requests arrive at the same time.
+- Sending the current status again returns 200 and changes nothing, so retries and duplicates are safe.
+- A rule violation throws a `ValidateException`, so the client gets a normal 422 with an `errors.status` message, and the transaction rolls back.
+- `completed_at` is set only when the new status is `done` and cleared when the task leaves `done`, in the same update as the status.
+
+**Learned**
+- A transition rule that depends on the current state must be checked after locking the row, not before.
