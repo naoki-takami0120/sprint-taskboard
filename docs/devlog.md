@@ -146,3 +146,19 @@
 
 **Learned**
 - A transition rule that depends on the current state must be checked after locking the row, not before.
+
+## Day 9 - 2026-10-27: Vue app setup
+
+**What I did**
+- Created the Vue 3 app in `frontend/` with Vite, Vue Router, Pinia, ESLint, and Prettier.
+- Fixed the dev server port and added a proxy for `/api` to the Laravel app.
+- Wrote an API client (`request`) and an auth store (login, logout, fetch user).
+
+**Why**
+- Proxying `/api` through the Vite dev server makes the browser see one origin, so I do not need CORS settings during development.
+- The dev server port is fixed with `strictPort`, because Sail already uses port 5173 and Vite would otherwise pick another port silently.
+- All API calls go through one `request` function, so headers, JSON handling, and error handling live in one place.
+- The token is stored in `localStorage`. This is simple, but it can be read by scripts if the app has an XSS bug. A cookie-based setup would avoid that but needs CSRF protection. I chose the simple option for now.
+
+**Problems and fixes**
+- `create-vue` warned that my Node version (23.7.0) is not in its supported range. The warning did not block the setup.
