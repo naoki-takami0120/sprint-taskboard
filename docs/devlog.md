@@ -162,3 +162,21 @@
 
 **Problems and fixes**
 - `create-vue` warned that my Node version (23.7.0) is not in its supported range. The warning did not block the setup.
+
+## Day 10 - 2026-10-28: Login screen, route guards, and logout
+
+**What I did**
+- Built the login screen with field-level validation errors and a message for failed sign-ins.
+- Added route guards: protected routes redirect to the login screen and remember the original path, and the login screen redirects signed-in users to the project list.
+- Fetched the user on the first navigation after a reload, and cleared the session when the token was rejected.
+- Added a sign-out button to the header.
+
+**Why**
+- The token stays in `localStorage`, so a reload keeps the user signed in, but the user object lives only in memory. The guard fetches it again after a reload, which also checks that the token is still valid.
+- The session is cleared only on a 401. A network error or a 500 should not sign the user out.
+- The `redirect` query value is used only when it starts with `/` and not `//`. Otherwise an attacker could send a login link that sends the user to another site after sign-in.
+- The submit button is disabled while the request runs, to prevent double submits.
+- `clearSession` is one function used by both sign-out and the guard, so the cleanup logic is not duplicated.
+
+**Learned**
+- A guard that returns nothing lets the navigation through, so the redirect has to be returned explicitly.
