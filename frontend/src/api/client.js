@@ -10,14 +10,15 @@ export class ApiError extends Error {
 
 export async function request(path, { method = 'GET', body, token } = {}) {
   const headers = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const options = { method, headers }
+
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+    options.body = JSON.stringify(body)
+  }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  const response = await fetch(`${BASE}${path}`, options)
 
   const data = response.status === 204 ? null : await response.json()
 

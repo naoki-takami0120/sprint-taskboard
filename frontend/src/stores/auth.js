@@ -14,13 +14,17 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('token', data.token)
   }
 
+  function clearSession() {
+    token.value = null
+    user.value = null
+    localStorage.removeItem('token')
+  }
+
   async function logout() {
     try {
       await request('/logout', { method: 'POST', token: token.value })
     } finally {
-      token.value = null
-      user.value = null
-      localStorage.removeItem('token')
+      clearSession()
     }
   }
 
@@ -29,5 +33,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = data.user
   }
 
-  return { token, user, isLoggedIn, login, logout, fetchUser }
+  return { token, user, isLoggedIn, login, logout, fetchUser, clearSession }
 })
