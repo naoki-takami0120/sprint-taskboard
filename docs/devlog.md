@@ -180,3 +180,24 @@
 
 **Learned**
 - A guard that returns nothing lets the navigation through, so the redirect has to be returned explicitly.
+
+## Day 11 - 2026-10-29: Project list and create form
+
+**What I did**
+- Built the project list with pagination, using the `page` query in the URL.
+- Showed one of four states at a time: loading, error with a retry button, empty list, or the list itself.
+- Built the create form as its own component. It emits a `created` event, and the list reloads.
+- Moved API calls into `src/api/projects.js`.
+
+**Why**
+- The page number lives in the URL, so a reload, a bookmark, and the browser's back button all keep working.
+- Each load gets a request id, and a response is used only if its id is still the latest. If the user changes pages quickly, a slow response for an old page cannot overwrite the current one.
+- The form does not know what the parent does after a create. It only emits an event, so the same form could be reused on another screen.
+- I left `required` off the title input on purpose, so I could see the server's 422 message appear under the field. The server validation is the real guard.
+- After a create, the list goes to page 1, because new projects appear first.
+
+**Problems and fixes**
+- Validation errors did not show up under the title field. I had written `error.value = error.body.errors` instead of `errors.value`. The code ran without any error message, and I found it only by testing the empty-title case.
+
+**Learned**
+- Responses can arrive out of order, so a screen that loads data on every change needs a way to ignore old responses.
