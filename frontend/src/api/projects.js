@@ -7,3 +7,11 @@ export function listProjects(token, { page = 1 } = {}) {
 export function createProject(token, payload) {
   return request('/projects', { method: 'POST', body: payload, token })
 }
+
+export function getProject(token, id) {
+  return request(`/projects/${id}`, { token })
+}
+
+export function listMembers(token, id) {
+  return request(`/projects/${id}/members`, { token })
+}
