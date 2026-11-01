@@ -220,3 +220,23 @@
 
 **Learned**
 - A page that loads several independent resources can fetch them in parallel with `Promise.all`, but one failure rejects the whole group.
+
+## Day 13 - 2026-11-01: Task create, edit, delete, and status change
+
+**What I did**
+- Added a task form used for both creating and editing, with field-level validation errors.
+- Added buttons on each card to move it to another status, edit it, or delete it.
+- Showed only the status buttons that the current status allows.
+- Reloaded the whole board after every action, including after a failed one.
+
+**Why**
+- After an action, the board is reloaded from the server instead of being patched in the browser. The screen always matches the server. The cost is a few extra requests, which I accept for now.
+- The board is reloaded even when the action fails. If another tab changed the task first, the screen is out of date, and a reload fixes it.
+- The reload after an action is silent (no "Loading..." state), so the board does not flicker or disappear.
+- The status transition rules exist in two places: the server decides, and the browser only decides which buttons to show. If the browser is wrong, the server still returns 422.
+- The form gets a `key` based on the task, so Vue creates a new form when I switch from editing one task to editing another. Without it, the old values stay in the form.
+- All buttons are disabled while an action runs, to prevent double submits.
+- Events from a card travel up through the column to the board view, because Vue events do not bubble to a grandparent on their own.
+
+**Learned**
+- Vue events go up one level at a time, so a component in the middle has to re-emit the events from its children.
