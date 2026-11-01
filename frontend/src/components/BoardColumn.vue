@@ -6,7 +6,9 @@ defineProps({
   tasks: { type: Array, required: true },
   total: { type: Number, required: true },
   members: { type: Object, required: true },
+  busy: { type: Boolean, default: false },
 })
+const emit = defineEmits(['move', 'edit', 'remove'])
 </script>
 
 <template>
@@ -22,6 +24,10 @@ defineProps({
       :key="task.id"
       :task="task"
       :assignee-name="members[task.assignee_id] ?? ''"
+      :busy="busy"
+      @move="(t, status) => emit('move', t, status)"
+      @edit="(t) => emit('edit', t)"
+      @remove="(t) => emit('remove', t)"
     />
 
     <p v-if="total > tasks.length" class="empty">Showing {{ tasks.length }} of {{ total }}</p>

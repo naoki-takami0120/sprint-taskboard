@@ -201,3 +201,22 @@
 
 **Learned**
 - Responses can arrive out of order, so a screen that loads data on every change needs a way to ignore old responses.
+
+## Day 12 - 2026-10-30: Project board
+
+**What I did**
+- Built the project board at `/projects/:id` with three columns: to do, in progress, and done.
+- Linked each project in the list to its board.
+- Split the board into small components: the board view, a column, and a task card.
+- Showed a "not found" message, a loading state, and an error state with a retry button.
+
+**Why**
+- Each column is loaded with its own request, filtered by status (`per_page=100`). With one paginated request, a column could be empty just because other statuses filled the page. The status filter from Day 6 made this easy.
+- The column header uses the total from the response metadata, so it stays correct even when the column shows only the first 100 tasks.
+- Tasks carry only an assignee id, so I turn the member list into an id-to-name map once after loading. Each card then looks up the name directly.
+- The five requests run in parallel with `Promise.all`, and any failure shows one error state for the whole board.
+- The board reloads when the `id` in the URL changes, and a response is used only if it belongs to the latest request, as on the project list.
+- The "not found" message is the same for a project that does not exist and a project the user is not a member of, matching the API, which returns 404 for both.
+
+**Learned**
+- A page that loads several independent resources can fetch them in parallel with `Promise.all`, but one failure rejects the whole group.

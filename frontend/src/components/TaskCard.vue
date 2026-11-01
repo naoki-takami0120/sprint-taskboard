@@ -1,8 +1,13 @@
 <script setup>
+import { STATUS_LABELS, TRANSITIONS } from '@/constants/taskStatus'
+
 defineProps({
   task: { type: Object, required: true },
   assigneeName: { type: String, default: '' },
+  busy: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['move', 'edit', 'remove'])
 </script>
 
 <template>
@@ -13,6 +18,20 @@ defineProps({
       <span v-if="task.due_date">Due {{ task.due_date }}</span>
     </p>
     <p class="meta">{{ assigneeName || 'Unassigned' }}</p>
+
+    <div class="actions">
+      <button
+        v-for="next in TRANSITIONS[task.status]"
+        :key="next"
+        type="button"
+        :disabled="busy"
+        @click="emit('move', task, next)"
+      >
+        &rarr; {{ STATUS_LABELS[next] }}
+      </button>
+      <button type="button" :disabled="busy" @click="emit('edit', task)">Edit</button>
+      <button type="button" :disabled="busy" @click="emit('remove', task)">Delete</button>
+    </div>
   </article>
 </template>
 
@@ -34,5 +53,11 @@ h3 {
   margin: 0;
   color: #666;
   font-size: 0.85rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
 }
 </style>

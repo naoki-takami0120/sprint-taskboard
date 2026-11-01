@@ -58,14 +58,16 @@ function onCreated() {
 
     <div v-else-if="error" role="alert">
       <p class="error">{{ error }}</p>
-      <button type="button" @click="load">Retry</button>
+      <button type="button" @click="load()">Retry</button>
     </div>
 
     <p v-else-if="projects.length === 0">No projects yet.</p>
 
     <ul v-else>
       <li v-for="project in projects" :key="project.id">
-        <strong>{{ project.title }}</strong>
+        <RouterLink :to="{ name: 'project-board', params: { id: project.id } }">
+          <strong>{{ project.title }}</strong>
+        </RouterLink>
         <span v-if="project.description"> - {{ project.description }}</span>
       </li>
     </ul>

@@ -1,8 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue'
 import BoardColumn from '@/components/BoardColumn.vue'
+import TaskForm from '@/components/TaskForm.vue'
 import { getProject, listMembers } from '@/api/projects'
-import { listTasks } from '@/api/tasks'
+import { changeTaskStatus, deleteTask, listTasks } from '@/api/tasks'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
@@ -22,16 +23,20 @@ function emptyColumns() {
 }
 
 const project = ref(null)
+const memberList = ref([])
 const members = ref({})
 const columns = ref(emptyColumns())
 const loading = ref(false)
 const notFound = ref(false)
 const error = ref('')
+const editing = ref(null) // null, 'new', or the task being edited
+const busy = ref(false)
+const actionError = ref('')
 let requestId = 0
 
-async function load() {
+async function load({ silent = false } = {}) {
   const current = ++requestId
-  loading.value = true
+  if (!silent) loading.value = true
   notFound.value = false
   error.value = ''
 
@@ -44,6 +49,7 @@ async function load() {
     if (current !== requestId) return
 
     project.value = projectResult.data
+    memberList.value = membersResult.data
     members.value = Object.fromEntries(membersResult.data.map((u) => [u.id, u.name]))
     columns.value = Object.fromEntries(
       STATUSES.map((s, i) => [
@@ -60,7 +66,44 @@ async function load() {
   }
 }
 
-watch(() => props.id, load, { immediate: true })
+watch(
+  () => props.id,
+  () => {
+    editing.value = null
+    load()
+  },
+  { immediate: true },
+)
+
+async function run(action) {
+  busy.value = true
+  actionError.value = ''
+
+  try {
+    await action()
+  } catch (e) {
+    actionError.value = e.message
+  } finally {
+    busy.value = false
+  }
+
+  // Reload even after a failure: the board may be out of date.
+  await load({ silent: true })
+}
+
+function moveTask(task, status) {
+  return run(() => changeTaskStatus(auth.token, task.id, status))
+}
+
+function removeTask(task) {
+  if (!window.confirm(`Delete "${task.title}"?`)) return
+  return run(() => deleteTask(auth.token, task.id))
+}
+
+async function onSaved() {
+  editing.value = null
+  await load({ silent: true })
+}
 </script>
 
 <template>
@@ -76,12 +119,27 @@ watch(() => props.id, load, { immediate: true })
 
     <div v-else-if="error" role="alert">
       <p class="error">{{ error }}</p>
-      <button type="button" @click="load">Retry</button>
+      <button type="button" @click="load()">Retry</button>
     </div>
 
     <template v-else-if="project">
-      <h1>{{ project.title }}</h1>
+      <div class="heading">
+        <h1>{{ project.title }}</h1>
+        <button type="button" :disabled="busy" @click="editing = 'new'">New task</button>
+      </div>
       <p v-if="project.description">{{ project.description }}</p>
+
+      <p v-if="actionError" class="error" role="alert">{{ actionError }}</p>
+
+      <TaskForm
+        v-if="editing"
+        :key="editing === 'new' ? 'new' : editing.id"
+        :project-id="id"
+        :members="memberList"
+        :task="editing === 'new' ? null : editing"
+        @saved="onSaved"
+        @cancel="editing = null"
+      />
 
       <div class="columns">
         <BoardColumn
@@ -91,6 +149,10 @@ watch(() => props.id, load, { immediate: true })
           :tasks="columns[status.key].tasks"
           :total="columns[status.key].total"
           :members="members"
+          :busy="busy"
+          @move="moveTask"
+          @edit="(task) => (editing = task)"
+          @remove="removeTask"
         />
       </div>
     </template>
@@ -101,6 +163,11 @@ watch(() => props.id, load, { immediate: true })
 .board {
   max-width: 1000px;
   margin: 2rem auto;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .columns {
   display: grid;
