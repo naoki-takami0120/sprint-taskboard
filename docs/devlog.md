@@ -240,3 +240,29 @@
 
 **Learned**
 - Vue events go up one level at a time, so a component in the middle has to re-emit the events from its children.
+
+## Day 14 - 2026-11-02: Shared 401 handling and assignee filter
+
+**What I did**
+- Handled 401 responses in one place in the API client: the session is cleared and the user is sent to the login screen, and the page they were on is remembered.
+- Showed a "session expired" message on the login screen.
+- Added an assignee filter to the board, kept in the URL query.
+- Made network failures and non-JSON error responses show a readable message.
+
+**Why**
+- The router guard runs only when the URL changes. It cannot notice a token that becomes invalid while the user stays on a page, for example after signing out in another tab. A shared 401 handler covers that case.
+- The API client does not import the auth store or the router, because the store already imports the client and that would be a circular import. The client only calls a handler that `main.js` registers.
+- The handler runs only for requests that carry a token, so a wrong password on the login form is not treated as an expired session.
+- The board loads five requests at once, so up to five 401 responses can arrive together. The handler returns early when the user is already signed out, so the redirect happens once.
+- The sign-out request and the guard's user fetch skip the shared handler, because each one already handles its own 401. Otherwise a user who signs out on purpose would see "session expired".
+- The assignee filter lives in the URL, so a reload, a bookmark, and the back button keep working. Changing the filter reloads silently, so the board does not flash.
+
+**Learned**
+- To avoid a circular import, a low-level module can expose a hook that a higher-level module registers.
+
+**Known limits**
+- The guard's 401 and the shared handler redirect differently: only the shared handler adds the "session expired" message.
+- A task with no assignee cannot be filtered, because the API has no "unassigned" option.
+- A task created while a filter is active may not appear, if it does not match the filter.
+- A 502 shows as "HTTP 502". A friendlier message per status code would help.
+- The front end has no automated tests yet.
