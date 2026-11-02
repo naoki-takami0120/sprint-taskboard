@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import BoardColumn from '@/components/BoardColumn.vue'
 import TaskForm from '@/components/TaskForm.vue'
 import { getProject, listMembers } from '@/api/projects'
@@ -11,6 +12,8 @@ const props = defineProps({
 })
 
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const STATUSES = [
   { key: 'todo', label: 'To do' },
@@ -20,6 +23,10 @@ const STATUSES = [
 
 function emptyColumns() {
   return Object.fromEntries(STATUSES.map((s) => [s.key, { tasks: [], total: 0 }]))
+}
+
+function setAssignee(value) {
+  router.push(value ? { query: { assignee: value } } : { query: {} })
 }
 
 const project = ref(null)
@@ -32,6 +39,12 @@ const error = ref('')
 const editing = ref(null) // null, 'new', or the task being edited
 const busy = ref(false)
 const actionError = ref('')
+
+const assigneeId = computed(() => {
+  const n = Number.parseInt(route.query.assignee, 10)
+  return Number.isInteger(n) && n > 0 ? n : null
+})
+
 let requestId = 0
 
 async function load({ silent = false } = {}) {
@@ -44,7 +57,13 @@ async function load({ silent = false } = {}) {
     const [projectResult, membersResult, ...taskResults] = await Promise.all([
       getProject(auth.token, props.id),
       listMembers(auth.token, props.id),
-      ...STATUSES.map((s) => listTasks(auth.token, props.id, { status: s.key, perPage: 100 })),
+      ...STATUSES.map((s) =>
+        listTasks(auth.token, props.id, {
+          status: s.key,
+          assigneeId: assigneeId.value,
+          perPage: 100,
+        }),
+      ),
     ])
     if (current !== requestId) return
 
@@ -74,6 +93,7 @@ watch(
   },
   { immediate: true },
 )
+watch(assigneeId, () => load({ silent: true }))
 
 async function run(action) {
   busy.value = true
@@ -131,6 +151,18 @@ async function onSaved() {
 
       <p v-if="actionError" class="error" role="alert">{{ actionError }}</p>
 
+      <div class="filters">
+        <label>
+          Assignee
+          <select :value="assigneeId ?? ''" @change="setAssignee($event.target.value)">
+            <option value="">All members</option>
+            <option v-for="member in memberList" :key="member.id" :value="member.id">
+              {{ member.name }}
+            </option>
+          </select>
+        </label>
+      </div>
+
       <TaskForm
         v-if="editing"
         :key="editing === 'new' ? 'new' : editing.id"
@@ -177,5 +209,12 @@ async function onSaved() {
 }
 .error {
   color: #c0392b;
+}
+.filters {
+  margin-top: 1rem;
+}
+select {
+  margin-left: 0.5rem;
+  padding: 0.25rem;
 }
 </style>

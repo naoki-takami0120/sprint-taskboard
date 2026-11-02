@@ -1,8 +1,9 @@
 import { request } from './client'
 
-export function listTasks(token, projectId, { status, perPage } = {}) {
+export function listTasks(token, projectId, { status, assigneeId, perPage } = {}) {
   const params = new URLSearchParams()
   if (status) params.set('status', status)
+  if (assigneeId) params.set('assignee_id', assigneeId)
   if (perPage) params.set('per_page', perPage)
 
   const query = params.toString()

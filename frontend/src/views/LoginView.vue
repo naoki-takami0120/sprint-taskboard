@@ -9,7 +9,9 @@ const route = useRoute()
 
 const form = reactive({ email: '', password: '' })
 const errors = ref({})
-const message = ref('')
+const message = ref(
+  route.query.reason === 'expired' ? 'Your session has expired. Please sign in again.' : '',
+)
 const loading = ref(false)
 
 function redirectTarget() {

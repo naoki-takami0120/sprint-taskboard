@@ -22,14 +22,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await request('/logout', { method: 'POST', token: token.value })
+      await request('/logout', { method: 'POST', token: token.value, handleUnauthorized: false })
     } finally {
       clearSession()
     }
   }
 
   async function fetchUser() {
-    const data = await request('/user', { token: token.value })
+    const data = await request('/user', { token: token.value, handleUnauthorized: false })
     user.value = data.user
   }
 
