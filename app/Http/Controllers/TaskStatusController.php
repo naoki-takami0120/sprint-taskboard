@@ -7,16 +7,17 @@ use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use App\Models\TaskStatusLog;
+use App\Services\TaskRanking;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TaskStatusController extends Controller
 {
-    public function update(UpdateTaskStatusRequest $request): TaskResource
+    public function update(UpdateTaskStatusRequest $request, TaskRanking $ranking): TaskResource
     {
         $newStatus = TaskStatus::from($request->validated('status'));
 
-        $task = DB::transaction(function () use ($request, $newStatus) {
+        $task = DB::transaction(function () use ($request, $newStatus, $ranking) {
             $task = Task::whereKey($request->task()->id)->lockForUpdate()->firstOrFail();
 
             if ($task->status === $newStatus) {
@@ -28,6 +29,7 @@ class TaskStatusController extends Controller
                 ]);
             }
             $from = $task->status;
+            $before = clone $task;
 
             $task->update([
                 'status' => $newStatus,
@@ -40,6 +42,16 @@ class TaskStatusController extends Controller
                 'to_status' => $newStatus->value,
                 'changed_by' => $request->user()->id,
             ]);
+
+            DB::afterCommit(function () use ($ranking, $task, $from, $newStatus) {
+                if ($from === TaskStatus::Done) {
+                    $ranking->remove($task);
+                }
+
+                if ($newStatus === TaskStatus::Done) {
+                    $ranking->add($task);
+                }
+            });
 
             return $task;
         });
