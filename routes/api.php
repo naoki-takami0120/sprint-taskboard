@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectMemberController;
 use App\Http\Controllers\ProjectRankingController;
+use App\Http\Controllers\ProjectSprintController;
+use App\Http\Controllers\SprintBurndownController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskStatusController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
     Route::delete('/projects/{project}/members/{user}', [ProjectMemberController::class, 'destroy']);
     Route::get('/projects/{project}/ranking', [ProjectRankingController::class, 'show']);
+    Route::get('/projects/{project}/sprints', [ProjectSprintController::class, 'index']);
+    Route::get('/sprints/{sprint}/burndown', [SprintBurndownController::class, 'show']);
 
     Route::patch('/tasks/{task}/status', [TaskStatusController::class, 'update']);
 
