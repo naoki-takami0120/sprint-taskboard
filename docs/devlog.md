@@ -266,3 +266,35 @@
 - A task created while a filter is active may not appear, if it does not match the filter.
 - A 502 shows as "HTTP 502". A friendlier message per status code would help.
 - The front end has no automated tests yet.
+
+## Day 16 - 2026-11-03: Weekly points ranking with Redis
+
+**What I did**
+- Built a weekly ranking of completed points per project with a Redis sorted set, one key per project and week.
+- Updated the ranking when a task enters or leaves `done`, after the database transaction commits.
+- Added `GET /api/projects/{project}/ranking` and an Artisan command that rebuilds the ranking from the tasks table.
+- Added tests for the ranking service, the status endpoint integration, and the ranking endpoint, and added Redis to CI.
+
+**Why**
+- A sorted set keeps members ordered by score, so adding points and reading the top N are single, fast commands. This is the same idea I used for rankings in a game with hundreds of thousands of users.
+- The database is the source of truth, and Redis is a copy that can be rebuilt. If Redis is flushed, `ranking:rebuild` restores it from the tasks table.
+- The ranking is updated in `DB::afterCommit`. If it were updated inside the transaction, a rolled-back status change would still leave points in Redis, because Redis does not take part in the database transaction.
+- Points are counted in the week the task was completed, and moving a task out of `done` removes points from that original week. For this, the controller keeps a copy of the task as it was before the update, so the old `completed_at` is still available.
+- Keys use the ISO week format (`o-\WW`), so weeks that span a new year are handled correctly. Keys expire after eight weeks, so old weeks do not pile up.
+- Redis stores only user ids and scores. Names are loaded from the database when the ranking is shown, in one query, because names can change.
+- Users with zero points are left out of the result when the top list is read, so a user whose points were all removed does not appear.
+
+**Problems and fixes**
+- `remove` received the updated task, whose `completed_at` was already null, so it removed nothing. I passed the copy made before the update instead.
+
+**Learned**
+- Redis does not take part in database transactions, so an update to Redis has to run after the commit.
+
+**Known limits**
+- If Redis is down when a status changes, the ranking misses that change until it is rebuilt.
+- If the process stops between the commit and the Redis update, the database and Redis disagree until a rebuild.
+- `ranking:rebuild` deletes keys with `KEYS`, which is fine for a small data set but can block a large Redis instance. `SCAN` would be safer.
+- The ranking is not shown in the Vue app yet.
+
+**Next**
+- Day 17: cache the burndown data in Redis, invalidate it when tasks change, and show the ranking in the board.
