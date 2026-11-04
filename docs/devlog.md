@@ -298,3 +298,32 @@
 
 **Next**
 - Day 17: cache the burndown data in Redis, invalidate it when tasks change, and show the ranking in the board.
+
+## Day 17 - 2026-11-04: Sprint burndown cache and board insights
+
+**What I did**
+- Added a read-only sprint list endpoint and a burndown endpoint (`remaining` points per day, `null` for days in the future).
+- Cached the burndown in Redis and invalidated it from a task observer, after the database commit.
+- Showed the weekly ranking and the burndown of a selected sprint on the board, and reloaded both after every task action.
+- Added tests for the calculation, the cache, the invalidation, and access control.
+
+**Why**
+- The burndown is the same for every viewer until a task changes, so it is a good candidate for a cache. The key contains today's date, so the cache rolls over by itself at midnight, and the "future days are null" part stays correct.
+- The cache entry is removed in `DB::afterCommit`. If it were removed inside the transaction, another request could rebuild it from the old data before the commit, and the stale value would stay.
+- An observer on the task model clears the cache in one place, so a create, update, delete, or status change cannot forget it. A one-hour expiry is only a safety net.
+- When a task moves to another sprint, the old sprint's numbers change too. The observer reads the old sprint id in `updating`, before the save, because the original value is not reliable after the commit.
+- The ranking and burndown load separately from the board, so a failure in the side panels shows a message but does not break the board.
+- Each load has a request id, and only the latest response is used, as on the other screens.
+
+**Problems and fixes**
+- (実際に起きたことを書く。なければ、この項目は、省く)
+
+**Learned**
+- Putting invalidation in a model observer is safer than remembering it in every controller, but it does not catch bulk query updates.
+
+**Known limits**
+- Bulk updates through the query builder do not fire model events, so they do not clear the cache. The only one today is clearing assignees, which does not change points.
+- Days are computed in the application's timezone (UTC), so a task completed late in the evening in Vancouver can fall on the next day.
+- Changing a sprint's dates does not clear the cache. There is no sprint update endpoint yet.
+- A fast sprint switch can show an older response. The burndown request has no request id.
+- The UI cannot create sprints or assign a task to a sprint, so the burndown only shows data that was created in the seeder or by the API.
