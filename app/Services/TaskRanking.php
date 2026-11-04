@@ -46,6 +46,7 @@ class TaskRanking
 
         return collect($rows)
             ->map(fn ($score, $userId) => ['user_id' => (int) $userId, 'points' => (int) $score])
+            ->filter(fn ($row) => $row['points'] > 0)
             ->values()
             ->all();
     }

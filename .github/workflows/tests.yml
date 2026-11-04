@@ -23,6 +23,16 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +40,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          extensions: mbstring, pdo_mysql
+          extensions: mbstring, pdo_mysql, redis
           coverage: none
 
       - name: Install dependencies
@@ -50,3 +60,4 @@ jobs:
           DB_DATABASE: testing
           DB_USERNAME: root
           DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1

@@ -4,14 +4,16 @@ namespace Tests\Feature;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\TaskRanking;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CreatesProjects;
+use Tests\Concerns\FlushesRedis;
 use Tests\TestCase;
 
 class TaskStatusTest extends TestCase
 {
-    use CreatesProjects, RefreshDatabase;
+    use CreatesProjects, FlushesRedis, RefreshDatabase;
 
     public function test_change_status_from_todo_to_in_progress(): void
     {
@@ -180,5 +182,69 @@ class TaskStatusTest extends TestCase
 
         $this->assertDatabaseHas('tasks', ['id' => $task->id, 'status' => 'todo']);
         $this->assertDatabaseCount('task_status_logs', 0);
+    }
+
+    public function test_moving_a_task_to_done_adds_points_to_the_ranking(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $task = Task::factory()->inProgress()->create([
+            'project_id' => $project->id,
+            'assignee_id' => $user->id,
+            'points' => 5,
+        ]);
+
+        Sanctum::actingAs($user);
+        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'done'])->assertOk();
+
+        $this->assertSame(
+            [['user_id' => $user->id, 'points' => 5]],
+            app(TaskRanking::class)->top($project->id, now()),
+        );
+    }
+
+    public function test_not_allowed_transition_does_not_add_points_to_the_ranking(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $task = Task::factory()->create([
+            'project_id' => $project->id,
+            'assignee_id' => $user->id,
+            'points' => 5,
+        ]);
+
+        Sanctum::actingAs($user);
+        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'done'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'status' => 'todo']);
+        $this->assertSame(
+            [],
+            app(TaskRanking::class)->top($project->id, now()),
+        );
+    }
+
+    public function test_moving_a_task_out_of_done_takes_its_points_back(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $task = Task::factory()->inProgress()->create([
+            'project_id' => $project->id,
+            'assignee_id' => $user->id,
+            'points' => 5,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'done'])->assertOk();
+        $this->assertSame(
+            [['user_id' => $user->id, 'points' => 5]],
+            app(TaskRanking::class)->top($project->id, now()),
+        );
+
+        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertOk();
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'status' => 'in_progress']);
+        $this->assertSame([], app(TaskRanking::class)->top($project->id, now()));
     }
 }

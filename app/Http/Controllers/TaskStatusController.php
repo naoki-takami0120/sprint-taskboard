@@ -43,9 +43,9 @@ class TaskStatusController extends Controller
                 'changed_by' => $request->user()->id,
             ]);
 
-            DB::afterCommit(function () use ($ranking, $task, $from, $newStatus) {
+            DB::afterCommit(function () use ($ranking, $before, $task, $from, $newStatus) {
                 if ($from === TaskStatus::Done) {
-                    $ranking->remove($task);
+                    $ranking->remove($before);
                 }
 
                 if ($newStatus === TaskStatus::Done) {
