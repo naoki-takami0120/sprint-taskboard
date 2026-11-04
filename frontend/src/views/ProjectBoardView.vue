@@ -3,6 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BoardColumn from '@/components/BoardColumn.vue'
 import TaskForm from '@/components/TaskForm.vue'
+import BurndownPanel from '@/components/BurndownPanel.vue'
+import RankingPanel from '@/components/RankingPanel.vue'
+import { getBurndown, getRanking, listSprints } from '@/api/insights'
 import { getProject, listMembers } from '@/api/projects'
 import { changeTaskStatus, deleteTask, listTasks } from '@/api/tasks'
 import { useAuthStore } from '@/stores/auth'
@@ -39,6 +42,13 @@ const error = ref('')
 const editing = ref(null) // null, 'new', or the task being edited
 const busy = ref(false)
 const actionError = ref('')
+
+const ranking = ref(null)
+const sprints = ref([])
+const sprintId = ref(null)
+const burndown = ref(null)
+const insightsError = ref('')
+let insightsRequestId = 0
 
 const assigneeId = computed(() => {
   const n = Number.parseInt(route.query.assignee, 10)
@@ -85,11 +95,58 @@ async function load({ silent = false } = {}) {
   }
 }
 
+async function loadInsights() {
+  const current = ++insightsRequestId
+  insightsError.value = ''
+
+  try {
+    const [rankingResult, sprintsResult] = await Promise.all([
+      getRanking(auth.token, props.id),
+      listSprints(auth.token, props.id),
+    ])
+    if (current !== insightsRequestId) return
+
+    ranking.value = rankingResult.data
+    sprints.value = sprintsResult.data
+
+    if (!sprints.value.some((s) => s.id === sprintId.value)) {
+      sprintId.value = sprints.value[0]?.id ?? null
+    }
+
+    const burndownResult = sprintId.value ? await getBurndown(auth.token, sprintId.value) : null
+    if (current !== insightsRequestId) return
+
+    burndown.value = burndownResult ? burndownResult.data : null
+  } catch (e) {
+    if (current !== insightsRequestId) return
+    insightsError.value = e.message
+  }
+}
+
+async function selectSprint(id) {
+  sprintId.value = id
+
+  try {
+    burndown.value = (await getBurndown(auth.token, id)).data
+  } catch (e) {
+    insightsError.value = e.message
+  }
+}
+
+function reloadAll() {
+  return Promise.all([load({ silent: true }), loadInsights()])
+}
+
 watch(
   () => props.id,
   () => {
     editing.value = null
+    ranking.value = null
+    sprints.value = []
+    sprintId.value = null
+    burndown.value = null
     load()
+    loadInsights()
   },
   { immediate: true },
 )
@@ -107,8 +164,7 @@ async function run(action) {
     busy.value = false
   }
 
-  // Reload even after a failure: the board may be out of date.
-  await load({ silent: true })
+  await reloadAll()
 }
 
 function moveTask(task, status) {
@@ -122,7 +178,7 @@ function removeTask(task) {
 
 async function onSaved() {
   editing.value = null
-  await load({ silent: true })
+  await reloadAll()
 }
 </script>
 
@@ -150,6 +206,18 @@ async function onSaved() {
       <p v-if="project.description">{{ project.description }}</p>
 
       <p v-if="actionError" class="error" role="alert">{{ actionError }}</p>
+
+      <p v-if="insightsError" class="error" role="alert">{{ insightsError }}</p>
+
+      <div class="insights">
+        <RankingPanel :ranking="ranking" />
+        <BurndownPanel
+          :sprints="sprints"
+          :sprint-id="sprintId"
+          :burndown="burndown"
+          @select="selectSprint"
+        />
+      </div>
 
       <div class="filters">
         <label>
@@ -216,5 +284,11 @@ async function onSaved() {
 select {
   margin-left: 0.5rem;
   padding: 0.25rem;
+}
+.insights {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 </style>
