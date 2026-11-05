@@ -315,9 +315,6 @@
 - The ranking and burndown load separately from the board, so a failure in the side panels shows a message but does not break the board.
 - Each load has a request id, and only the latest response is used, as on the other screens.
 
-**Problems and fixes**
-- (実際に起きたことを書く。なければ、この項目は、省く)
-
 **Learned**
 - Putting invalidation in a model observer is safer than remembering it in every controller, but it does not catch bulk query updates.
 
@@ -327,3 +324,31 @@
 - Changing a sprint's dates does not clear the cache. There is no sprint update endpoint yet.
 - A fast sprint switch can show an older response. The burndown request has no request id.
 - The UI cannot create sprints or assign a task to a sprint, so the burndown only shows data that was created in the seeder or by the API.
+
+## Day 18 - 2026-11-05: N+1 query fix and query-count tests
+
+**What I did**
+- Added `assignee_name` to the task list response, which created an N+1 query on purpose. With 100 tasks on a page, the list ran about 102 queries.
+- Wrote the test first: it counts the queries for 2 tasks and for 15 tasks, and expects the same number. It failed.
+- Fixed it with eager loading (`with('assignee')`). The same page now runs about 3 queries.
+- Turned on `Model::preventLazyLoading` outside production, so a missing `with` throws an exception instead of silently adding queries.
+- Added the same kind of query-count test for the project list, the member list, and the ranking.
+- Removed the name lookup from the browser. The board now reads `assignee_name` from the API.
+
+**Why**
+- The test compares the count for a small list and a larger list instead of asserting an exact number. It fails when the count grows with the data, and it does not break when an unrelated query is added, for example by authentication.
+- Lazy loading is blocked only outside production. A performance bug should not show an error to a real user, but it should fail loudly in development and in tests, and the message names the relation and the model.
+- Returning the name from the API removes the member lookup from every client. The cost is that the server must remember to eager load, and the two guards above cover that.
+- `with('assignee')` loads all assignees in one query (`where id in (...)`), so the number of queries no longer depends on the number of tasks.
+
+**Problems and fixes**
+- The editor warned about an undefined method `isProduction` on `$this->app`, because the type is an interface. I used `environment('production')` instead.
+- When I removed the member lookup from the board, I also removed the `members` prop from the task form by mistake. The form still needs the list for its assignee dropdown, so I put it back.
+
+**Learned**
+- An N+1 is easy to miss because the code works and the tests pass. Only a test that counts queries, or a guard that blocks lazy loading, can catch it.
+
+**Known limits**
+- Responses for a single task (create, update, status change) still load the assignee lazily, one query each. That is not an N+1, because it is one model.
+- The query-count tests check that the count does not grow, not what the count is, so they would not catch a constant extra query.
+- Lazy loading is not blocked in production, so a missed `with` there would only show up as slower responses.
