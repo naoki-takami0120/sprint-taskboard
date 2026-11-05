@@ -34,7 +34,6 @@ function setAssignee(value) {
 
 const project = ref(null)
 const memberList = ref([])
-const members = ref({})
 const columns = ref(emptyColumns())
 const loading = ref(false)
 const notFound = ref(false)
@@ -79,7 +78,6 @@ async function load({ silent = false } = {}) {
 
     project.value = projectResult.data
     memberList.value = membersResult.data
-    members.value = Object.fromEntries(membersResult.data.map((u) => [u.id, u.name]))
     columns.value = Object.fromEntries(
       STATUSES.map((s, i) => [
         s.key,
@@ -248,7 +246,6 @@ async function onSaved() {
           :title="status.label"
           :tasks="columns[status.key].tasks"
           :total="columns[status.key].total"
-          :members="members"
           :busy="busy"
           @move="moveTask"
           @edit="(task) => (editing = task)"

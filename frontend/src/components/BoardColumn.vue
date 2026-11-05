@@ -23,7 +23,7 @@ const emit = defineEmits(['move', 'edit', 'remove'])
       v-for="task in tasks"
       :key="task.id"
       :task="task"
-      :assignee-name="members[task.assignee_id] ?? ''"
+      :assignee-name="task.assignee_name ?? ''"
       :busy="busy"
       @move="(t, status) => emit('move', t, status)"
       @edit="(t) => emit('edit', t)"
