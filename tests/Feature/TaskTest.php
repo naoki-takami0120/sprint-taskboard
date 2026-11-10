@@ -408,4 +408,29 @@ class TaskTest extends TestCase
         $this->getJson("/api/projects/{$project->id}/tasks?status=archived")
             ->assertNotFound();
     }
+
+    public function test_task_list_includes_the_assignee_name(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->projectFor($user);
+        $bob = User::factory()->create(['name' => 'Bob']);
+        $project->members()->attach($bob->id);
+
+        Task::factory()->create([
+            'project_id' => $project->id,
+            'assignee_id' => $bob->id,
+        ]);
+        Task::factory()->create([
+            'project_id' => $project->id,
+            'assignee_id' => null,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/projects/{$project->id}/tasks")
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['assignee_name' => 'Bob'])
+            ->assertJsonFragment(['assignee_name' => null]);
+    }
 }

@@ -14,6 +14,11 @@ class TaskObserver
         if ($task->isDirty('sprint_id')) {
             $this->forgetAfterCommit($task->getOriginal('sprint_id'));
         }
+
+        // A new due date or a new assignee deserves a new notice.
+        if ($task->isDirty(['due_date', 'assignee_id'])) {
+            $task->due_notified_at = null;
+        }
     }
 
     public function saved(Task $task): void

@@ -24,6 +24,7 @@ class Task extends Model
             'status' => TaskStatus::class,
             'due_date' => 'date',
             'completed_at' => 'datetime',
+            'due_notified_at' => 'datetime',
         ];
     }
 

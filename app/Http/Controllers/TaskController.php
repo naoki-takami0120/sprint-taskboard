@@ -20,6 +20,7 @@ class TaskController extends Controller
     public function index(IndexTaskRequest $request): AnonymousResourceCollection
     {
         $tasks = $request->project()->tasks()
+            ->with('assignee')
             ->when($request->validated('status'), fn ($query, $status) => $query->where('status', $status))
             ->when($request->validated('assignee_id'), fn ($query, $id) => $query->where('assignee_id', $id))
             ->when($request->validated('sprint_id'), fn ($query, $id) => $query->where('sprint_id', $id))
