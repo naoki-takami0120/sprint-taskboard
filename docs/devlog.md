@@ -352,3 +352,27 @@
 - Responses for a single task (create, update, status change) still load the assignee lazily, one query each. That is not an N+1, because it is one model.
 - The query-count tests check that the count does not grow, not what the count is, so they would not catch a constant extra query.
 - Lazy loading is not blocked in production, so a missed `with` there would only show up as slower responses.
+
+## Day 19 - 2026-11-10: Due-date notices on a Redis queue
+
+**What I did**
+- Added a `tasks:notify-due-soon` command that finds unfinished, assigned tasks due today or tomorrow and queues one job per task. The scheduler runs it every day at 8:00 Vancouver time.
+- Added a job that sends the notice to the assignee and records `due_notified_at`, with three tries and a 10 second and a 60 second delay between them.
+- Ran a worker, watched a job succeed, then broke the job on purpose and watched it retry and land in `failed_jobs`. I fixed it and retried with `queue:retry`.
+- Added tests for the command, the job, and the observer rule that resets the notified mark.
+
+**Why**
+- Each task is its own job, so one failure does not stop the others, and only the failed one is retried. Doing this in a loop in the command would need a retry mechanism of my own.
+- The job carries only the task id and loads the task again when it runs. A copy of the task made when the job was queued could be out of date by the time the worker gets to it.
+- Sending twice is prevented in three places: `due_notified_at` on the task, `ShouldBeUnique` so the same task is not queued twice at once, and a check at the start of the job, because the task can change between queueing and running.
+- The job sends first and records after. If it stops in between, the user may get two notices. The other order could lose a notice, and a duplicate reminder is less harmful than a missing one.
+- A new due date or a new assignee clears `due_notified_at`, so the person who is now responsible gets a notice.
+- Retries wait 10 seconds and then 60 seconds, because an immediate retry usually fails for the same reason.
+- The tests call the job's `handle()` directly with `Notification::fake()`, and use `Queue::fake()` for the command, so they do not need a running worker.
+
+**Known limits**
+- Notices are written to the log. No real mail server is set up.
+- `due_date` is a date without a time, so "due tomorrow" is decided in Vancouver time by the scheduler, while the database stores UTC.
+- A failed job is only logged. There is no alert and no dashboard for the workers.
+- If the process stops after sending and before recording, the notice is sent again on the next run.
+- Updates made through the query builder skip the model events, so they do not clear `due_notified_at`.
