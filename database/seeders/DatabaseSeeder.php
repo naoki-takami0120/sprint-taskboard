@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 class DatabaseSeeder extends Seeder
 {
@@ -26,7 +27,12 @@ class DatabaseSeeder extends Seeder
         $memberIds = $members->pluck('id');
         $project->members()->attach($memberIds);
 
-        $sprint = Sprint::factory()->create(['project_id' => $project->id]);
+        $sprint = Sprint::factory()->create([
+            'project_id' => $project->id,
+            'title' => 'Sprint1',
+            'start_date' => now()->subDays(3)->toDateString(),
+            'end_date' => now()->addDays(10)->toDateString(),
+        ]);
 
         $taskData = ['project_id' => $project->id, 'sprint_id' => $sprint->id];
         Task::factory()->count(4)->create($taskData);
@@ -35,5 +41,6 @@ class DatabaseSeeder extends Seeder
             $task->update(['assignee_id' => $memberIds->random()]);
         });
 
+        Artisan::call('ranking:rebuild');
     }
 }
