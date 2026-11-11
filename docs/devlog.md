@@ -376,3 +376,20 @@
 - A failed job is only logged. There is no alert and no dashboard for the workers.
 - If the process stops after sending and before recording, the notice is sent again on the next run.
 - Updates made through the query builder skip the model events, so they do not clear `due_notified_at`.
+
+## Day 20 - skipped
+
+I used the spare day for the README and the clean-clone check, so these notes are under Day 21.
+
+## Day 21 - 2026-11-11: README, CI, and a clean-clone check
+
+**What I did**
+- Added a frontend job to CI (install, lint, build) and a Pint check to the backend job.
+- Made the seeder demo-ready: a sprint that includes today, and a ranking rebuild at the end, so a fresh install shows the ranking and the burndown.
+- Rewrote the README with the setup steps, an API overview, design notes with the numbers I measured, and the known limitations.
+- Cloned the repository into a clean folder, followed the README step by step, and ran the tests there.
+
+**Why**
+- Building the frontend in CI catches a broken build that the backend tests cannot see.
+- A README that only works on my machine is worse than no README, so I ran it from a fresh clone and fixed what was missing.
+- The seeder rebuilds the ranking, because seeded tasks never pass through the status endpoint that updates it.
